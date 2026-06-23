@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTM Server-Side Test Page</title>
+
+  <!-- ============================================
+    GTM Web Container Snippet
+    Container: GTM-5FQDR3PW (Devvertory - Web Learning)
+  ============================================ -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-5FQDR3PW');</script>
+  <!-- End GTM -->
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+
+    .header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header .badge { background: #e94560; color: white; font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Info bar */
+    .info-bar { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; font-size: 13px; color: #856404; }
+    .info-bar strong { display: block; margin-bottom: 4px; }
+
+    /* Event log */
+    .log-box { background: #1e1e1e; border-radius: 10px; padding: 16px; margin-bottom: 24px; min-height: 100px; max-height: 200px; overflow-y: auto; }
+    .log-box .log-title { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-family: monospace; }
+    .log-entry { font-family: monospace; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #333; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .time { color: #888; margin-right: 8px; }
+    .log-entry .event-name { color: #4ec9b0; font-weight: bold; }
+    .log-entry .data { color: #ce9178; }
+    .log-empty { color: #555; font-family: monospace; font-size: 12px; }
+
+    /* Product grid */
+    .section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #444; }
+    .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .product-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .product-card .product-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .product-card .product-price { font-size: 18px; font-weight: 700; color: #e94560; margin-bottom: 12px; }
+    .product-card .product-category { font-size: 11px; color: #888; margin-bottom: 12px; }
+    .btn { width: 100%; padding: 8px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-view { background: #f0f0f0; color: #333; margin-bottom: 6px; }
+    .btn-view:hover { background: #e0e0e0; }
+    .btn-cart { background: #1a1a2e; color: white; margin-bottom: 6px; }
+    .btn-cart:hover { background: #2d2d4e; }
+    .btn-buy { background: #e94560; color: white; }
+    .btn-buy:hover { background: #c73652; }
+
+    /* Funnel buttons */
+    .funnel-section { background: white; border-radius: 10px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .funnel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+    .btn-funnel { padding: 10px 14px; border: 1.5px solid #ddd; border-radius: 8px; background: white; font-size: 13px; cursor: pointer; transition: all 0.2s; text-align: left; }
+    .btn-funnel:hover { border-color: #1a1a2e; background: #f8f8ff; }
+    .btn-funnel .f-label { font-weight: 600; display: block; font-size: 12px; color: #1a1a2e; }
+    .btn-funnel .f-desc { font-size: 11px; color: #888; }
+
+    /* dataLayer monitor */
+    .monitor { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .monitor pre { background: #f5f5f5; border-radius: 6px; padding: 12px; font-size: 12px; font-family: monospace; overflow-x: auto; color: #333; min-height: 60px; }
+
+    .clear-btn { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 12px; font-size: 12px; color: #888; cursor: pointer; float: right; }
+    .clear-btn:hover { background: #f5f5f5; }
+
+    .tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 6px; }
+    .tag-view { background: #e3f2fd; color: #1565c0; }
+    .tag-cart { background: #e8f5e9; color: #2e7d32; }
+    .tag-purchase { background: #fce4ec; color: #c62828; }
+  </style>
+</head>
+<body>
+
+<!-- GTM noscript -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5FQDR3PW" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+<div class="header">
+  <h1>🛒 GTM Server-Side Test Shop</h1>
+  <span class="badge">Learning Mode</span>
+</div>
+
+<div class="container">
+
+  <!-- Info -->
+  <div class="info-bar">
+    <strong>📌 วิธีใช้ Test Page นี้</strong>
+    กดปุ่มต่างๆ ด้านล่าง — ดู dataLayer log ที่แสดงขึ้นมา
+    แล้วเปิด GTM Preview Mode เพื่อดูว่า event วิ่งถึง server container ไหม
+  </div>
+
+  <!-- Event Log -->
+  <div class="log-box">
+    <div class="log-title">📡 dataLayer events — real-time log <button class="clear-btn" onclick="clearLog()">clear</button></div>
+    <div id="event-log"><div class="log-empty">กดปุ่มใดก็ได้เพื่อดู event...</div></div>
+  </div>
+
+  <!-- Products -->
+  <div class="section-title">สินค้าจำลอง — กดเพื่อ fire events</div>
+  <div class="products" id="products"></div>
+
+  <!-- Funnel Events -->
+  <div class="funnel-section">
+    <div class="section-title">🔁 Funnel Events อื่นๆ</div>
+    <div class="funnel-grid">
+      <button class="btn-funnel" onclick="fireEvent('view_item_list', {item_list_name: 'Homepage', items: [{item_name: 'Course Bundle', price: 2990}]})">
+        <span class="f-label">view_item_list</span>
+        <span class="f-desc">ดูรายการสินค้า</span>
+      </button>
+      <button class="btn-funnel" onclick="fireEvent('search', {search_term: 'javascript course'})">
+        <span class="f-label">search</span>
+        <span class="f-desc">ค้นหาสินค้า</span>
+      </button>
+      <button class="btn-funnel" onclick="fireEvent('begin_checkout', {value: 1490, currency: 'THB', items: [{item_name: 'GTM Pro Course', price: 1490}]})">
+        <span class="f-label">begin_checkout</span>
+        <span class="f-desc">เริ่ม checkout</span>
+      </button>
+      <button class="btn-funnel" onclick="fireEvent('add_payment_info', {payment_type: 'credit_card', value: 1490, currency: 'THB'})">
+        <span class="f-label">add_payment_info</span>
+        <span class="f-desc">ใส่ข้อมูลบัตร</span>
+      </button>
+      <button class="btn-funnel" onclick="fireEvent('sign_up', {method: 'email'})">
+        <span class="f-label">sign_up</span>
+        <span class="f-desc">สมัครสมาชิก</span>
+      </button>
+      <button class="btn-funnel" onclick="fireEvent('login', {method: 'google'})">
+        <span class="f-label">login</span>
+        <span class="f-desc">เข้าสู่ระบบ</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- dataLayer Inspector -->
+  <div class="monitor">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">🔍 dataLayer ปัจจุบัน (raw)</div>
+      <button class="clear-btn" onclick="refreshDL()">refresh</button>
+    </div>
+    <pre id="dl-monitor">คลิก refresh หรือกด event ใดก็ได้...</pre>
+  </div>
+
+</div>
+
+<script>
+  // ============ Products data ============
+  const products = [
+    { id: 'P001', name: 'GTM Pro Course', price: 1490, category: 'Online Course', currency: 'THB' },
+    { id: 'P002', name: 'Meta Ads Masterclass', price: 2490, category: 'Online Course', currency: 'THB' },
+    { id: 'P003', name: 'Analytics Bundle', price: 3990, category: 'Bundle', currency: 'THB' },
+    { id: 'P004', name: 'Server-Side Tracking', price: 1990, category: 'Online Course', currency: 'THB' },
+  ];
+
+  // ============ Render products ============
+  const grid = document.getElementById('products');
+  products.forEach(p => {
+    grid.innerHTML += `
+      <div class="product-card">
+        <div class="product-category">${p.category}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-price">฿${p.price.toLocaleString()}</div>
+        <button class="btn btn-view" onclick="fireViewItem('${p.id}')">👁 view_item <span class="tag tag-view">GA4</span></button>
+        <button class="btn btn-cart" onclick="fireAddToCart('${p.id}')">🛒 add_to_cart <span class="tag tag-cart">GA4</span></button>
+        <button class="btn btn-buy" onclick="firePurchase('${p.id}')">💳 purchase <span class="tag tag-purchase">Meta</span></button>
+      </div>`;
+  });
+
+  // ============ Event helpers ============
+  function getProduct(id) { return products.find(p => p.id === id); }
+
+  function generateEventId() {
+    // event_id สำคัญมากสำหรับ Meta CAPI deduplication
+    return 'evt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  }
+
+  function fireViewItem(id) {
+    const p = getProduct(id);
+    fireEvent('view_item', {
+      currency: p.currency,
+      value: p.price,
+      items: [{ item_id: p.id, item_name: p.name, item_category: p.category, price: p.price, quantity: 1 }]
+    });
+  }
+
+  function fireAddToCart(id) {
+    const p = getProduct(id);
+    fireEvent('add_to_cart', {
+      currency: p.currency,
+      value: p.price,
+      items: [{ item_id: p.id, item_name: p.name, item_category: p.category, price: p.price, quantity: 1 }]
+    });
+  }
+
+  function firePurchase(id) {
+    const p = getProduct(id);
+    const eventId = generateEventId(); // ใช้ dedup ระหว่าง pixel + CAPI
+    fireEvent('purchase', {
+      transaction_id: 'TXN_' + Date.now(),
+      event_id: eventId,        // <-- Meta CAPI deduplication key
+      currency: p.currency,
+      value: p.price,
+      items: [{ item_id: p.id, item_name: p.name, item_category: p.category, price: p.price, quantity: 1 }]
+    });
+  }
+
+  function fireEvent(eventName, data) {
+    const payload = { event: eventName, ...data };
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(payload);
+    logEvent(eventName, data);
+    refreshDL();
+  }
+
+  // ============ UI: Event log ============
+  function logEvent(name, data) {
+    const log = document.getElementById('event-log');
+    const now = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const summary = data.value ? `value: ฿${data.value}` : data.search_term ? `"${data.search_term}"` : data.items ? `${data.items[0]?.item_name || ''}` : '';
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="time">${now}</span><span class="event-name">${name}</span> <span class="data">${summary}</span>`;
+    if (log.querySelector('.log-empty')) log.innerHTML = '';
+    log.insertBefore(entry, log.firstChild);
+  }
+
+  function clearLog() {
+    document.getElementById('event-log').innerHTML = '<div class="log-empty">cleared...</div>';
+  }
+
+  // ============ UI: dataLayer monitor ============
+  function refreshDL() {
+    const dl = window.dataLayer || [];
+    const last5 = dl.slice(-5).reverse();
+    document.getElementById('dl-monitor').textContent = JSON.stringify(last5, null, 2);
+  }
+</script>
+</body>
+</html>
