@@ -1,36 +1,70 @@
 # GTM Server-Side Tracking + Meta CAPI Demo
 
-> **ภาษาไทย / Thai version below** ↓
+> A complete implementation of server-side tracking with Meta Conversions API — built as a learning portfolio and reusable template.
+> **ภาษาไทยอยู่ด้านล่าง / Thai version below** ↓
 
-A complete implementation of **GTM Server-Side Tracking** with **Meta Conversions API (CAPI)** — built as a learning portfolio and reusable template for real client work.
+---
 
-## What This Project Does
+## Case Study
 
-Replaces browser-side pixel tracking with a server-side architecture that:
+**Problem**
+Browser-side pixel tracking loses an estimated 20–40% of conversion events (industry benchmark) due to ad blockers, Safari ITP, and iOS privacy restrictions. When Meta receives incomplete data, it optimizes ad campaigns on a partial picture — leading to inefficient ad spend and inaccurate attribution.
 
-- **Bypasses ad blockers** — events are sent server-to-server, not browser-to-vendor
-- **Survives Safari ITP** — first-party cookies set by your own server, not restricted by browser
-- **Improves Meta CAPI data quality** — purchase events reach Meta even when browser pixel is blocked
-- **Reduces data loss** — typically recovers 20–40% of events lost to browser-side blocking
+**Solution**
+Implemented GTM Server-Side Tracking with Meta Conversions API on GCP Cloud Run. Events flow browser → first-party server → Meta server-to-server, with `event_id`-based deduplication to prevent double-counting when both browser pixel and server CAPI are used.
+
+**Result (verified in this project)**
+- Purchase events confirmed reaching Meta — verified as **Processed** in Meta Events Manager Test Events, source = Server
+- End-to-end pipeline working: dataLayer → Web Container → Server Container → Meta CAPI
+- Deduplication implemented via `event_id` generated before dataLayer push
+
+**Expected Business Impact** *(based on industry benchmarks, not measured in this demo)*
+- Server-side tracking typically recovers 20–40% of events lost to browser-side blocking
+- Improved Event Match Quality (EMQ) from sending hashed first-party data server-side can reduce CPA by 15–25% (per Meta's published figures)
+- First-party cookies extend lifetime from ~7 days (Safari ITP) to up to 400 days, improving returning-user attribution
+
+---
 
 ## Architecture
 
 ```
 User's Browser
-    │
-    │  dataLayer.push({ event: 'purchase', ... })
+    │  dataLayer.push({ event: 'purchase', event_id: '...', ... })
     ▼
 GTM Web Container
-    │
-    │  HTTP POST → transport_url (your server, not Google/Meta directly)
+    │  HTTP POST → transport_url (your first-party server, not Google/Meta directly)
     ▼
 GTM Server Container (GCP Cloud Run)
     │
-    ├──► GA4 Client → parses incoming request
+    ├──► GA4 Client → parses incoming request into event data
     │
-    └──► Meta CAPI Tag → POST to graph.facebook.com/events
-                         server-to-server, no browser involved
+    └──► Meta CAPI Tag → POST graph.facebook.com/events (server-to-server)
 ```
+
+---
+
+## Before / After
+
+| Aspect | Browser-side (before) | Server-side (after) |
+|---|---|---|
+| Ad blockers | Block 20–40% of events | Server-to-server, not blocked |
+| Safari ITP cookie life | ~7 days | Up to 400 days (first-party) |
+| iOS 14+ restrictions | Limited data | Hashed user_data sent server-side |
+| JavaScript errors | Pixel may not fire | Server receives if request arrives |
+
+*Percentages are industry benchmarks, not measured in this specific project.*
+
+---
+
+## Cost Estimate (GCP Cloud Run)
+
+| Traffic level | Estimated monthly cost |
+|---|---|
+| Dev / test | ~$0 (free tier: 2M requests/month) |
+| Small site (<100k visits/mo) | ~$5 |
+| Medium site | ~$10–20 |
+
+---
 
 ## Repo Structure
 
@@ -38,19 +72,21 @@ GTM Server Container (GCP Cloud Run)
 gtm-server-side-capi-demo/
 ├── README.md
 ├── gtm-config/
-│   ├── web-container.json          # GTM Web Container export
-│   └── server-container.json      # GTM Server Container export
+│   ├── web-container.json
+│   └── server-container.json
 ├── test-page/
-│   └── gtm-test-page.html         # Local test page with simulated e-commerce events
+│   └── gtm-test-page.html
 ├── tracking-spec/
 │   └── tracking-spec-template.xlsx
 └── docs/
-    └── setup-guide.md
+    └── qa-checklist.md
 ```
+
+---
 
 ## Quick Start
 
-### Step 1 — Replace all placeholders
+### Step 1 — Replace placeholders
 
 | Placeholder | Replace with |
 |---|---|
@@ -63,207 +99,131 @@ gtm-server-side-capi-demo/
 | `YOUR_META_ACCESS_TOKEN` | Never commit the real value |
 
 ### Step 2 — Deploy Server Container on GCP
-
-1. Go to [tagmanager.google.com](https://tagmanager.google.com)
-2. Create new container → Target platform: **Server**
-3. Choose **Automatically provision tagging server**
-4. Select or create a GCP project
-5. Wait ~3–5 minutes → get your server URL
+1. [tagmanager.google.com](https://tagmanager.google.com) → Create container → Target: **Server**
+2. Choose **Automatically provision tagging server** → select GCP project
+3. Wait ~3–5 min → get your server URL
 
 ### Step 3 — Import GTM containers
-
-1. GTM → Admin → Import Container
-2. Select `gtm-config/web-container.json` → Import to Web Container
-3. Select `gtm-config/server-container.json` → Import to Server Container
+GTM → Admin → Import Container → select the JSON files in `gtm-config/`
 
 ### Step 4 — Test locally
-
-1. Install [VS Code](https://code.visualstudio.com) + Live Server extension
-2. Open `test-page/gtm-test-page.html` → right-click → **Open with Live Server**
-3. Enable GTM Preview Mode on both Web and Server containers
-4. Click any button on the test page
-5. Verify in Server Preview: **Meta CAPI - Purchase → Fired**
-6. Verify in Meta Events Manager → Test Events: **Purchase → Processed**
+1. VS Code + Live Server → open `test-page/gtm-test-page.html`
+2. Enable Preview on both Web and Server containers
+3. Click any button → verify Server Preview shows **Meta CAPI → Fired**
+4. Check Meta Events Manager → Test Events → **Purchase → Processed**
 
 ---
 
+## Key Concepts
+
+### Transport URL
+Points GTM Web Container to your own server instead of Google/Meta directly. Browser sees a first-party request → ad blockers don't block it.
+
+### Event Match Quality (EMQ)
+Meta's 0–10 score for how well it matches your events to real users. Higher EMQ = better targeting. Server-side wins here because it can send hashed first-party data (email, phone) from the backend. **Note:** EMQ is a minimum-viable-signal metric — event coverage (% of conversions captured) matters more than chasing a perfect score. Target EMQ 6+ with high coverage.
+
+### Deduplication
+Both browser pixel and server CAPI send the same event. Without dedup, Meta counts twice. The fix: identical `event_id` in both. Meta sees matching IDs → counts once. This project generates `event_id` before dataLayer push.
+
+### Consent Mode v2
+Server-side does NOT make consent optional — it makes it more important, since the server sends data reliably. Consent state flows browser → server via the `gcs` parameter; server forwards events only when consent is granted. Advanced Mode sends cookieless pings for modeling when consent is denied. Required for EEA advertisers since March 2024 (needs a Google-certified CMP in production).
+
 ---
-
-# GTM Server-Side Tracking + Meta CAPI (ภาษาไทย)
-
-โปรเจคนี้คือการ implement **GTM Server-Side Tracking** ร่วมกับ **Meta Conversions API (CAPI)** สร้างขึ้นเพื่อเป็น learning portfolio และ template สำหรับนำไปใช้กับงาน client จริง
-
-## โปรเจคนี้ทำอะไร
-
-เปลี่ยนจากการติด pixel บน browser มาเป็น server-side architecture ที่:
-
-- **ไม่โดน ad blocker บล็อก** — event ส่งแบบ server-to-server ไม่ผ่าน browser
-- **รอดจาก Safari ITP** — cookies ถูก set โดย server ของคุณเอง อายุยาวกว่า
-- **ข้อมูล Meta CAPI ครบขึ้น** — purchase event ถึง Meta แม้ browser pixel โดนบล็อก
-- **ลด data loss** — โดยทั่วไปกู้คืน event ที่หายไป 20–40%
-
-## ทำไม server-side tracking ถึงสำคัญ
-
-ปัญหาของ browser-side tracking แบบเดิม:
-
-- **Ad blockers** — ผู้ใช้ที่ใช้ Brave, uBlock Origin หรือ extension บล็อก ads จะทำให้ pixel ไม่ทำงาน
-- **Safari ITP (Intelligent Tracking Prevention)** — Safari จำกัดอายุ cookie จาก third-party script เหลือแค่ 7 วัน ทำให้ returning user ถูกนับเป็น new user
-- **iOS 14+** — Apple จำกัดการเข้าถึง IDFA ทำให้ data ที่ Meta ได้ไม่ครบ
-
-Server-side tracking แก้ปัญหาเหล่านี้โดยให้ browser ส่ง event มาที่ server ของคุณก่อน แล้ว server ค่อย forward ไปให้ Meta, GA4 ฯลฯ — browser เห็นว่าคุยกับโดเมนของคุณเอง ad blocker ไม่แตะ
-
-## Architecture
-
-```
-Browser ของ User
-    │
-    │  dataLayer.push({ event: 'purchase', ... })
-    ▼
-GTM Web Container (ทำงานใน browser)
-    │
-    │  HTTP POST → transport_url (server ของคุณ ไม่ใช่ Google/Meta โดยตรง)
-    ▼
-GTM Server Container (รันบน GCP Cloud Run)
-    │
-    ├──► GA4 Client → รับ request เข้ามา แปลงเป็น event data
-    │
-    └──► Meta CAPI Tag → ส่งไป graph.facebook.com/events
-                         server-to-server ล้วนๆ ไม่ผ่าน browser
-```
-
-## โครงสร้างไฟล์
-
-```
-gtm-server-side-capi-demo/
-├── README.md                           # ไฟล์นี้
-├── gtm-config/
-│   ├── web-container.json              # export จาก GTM Web Container
-│   └── server-container.json          # export จาก GTM Server Container
-├── test-page/
-│   └── gtm-test-page.html             # หน้าทดสอบจำลอง e-commerce
-├── tracking-spec/
-│   └── tracking-spec-template.xlsx    # template spec สำหรับส่ง developer
-└── docs/
-    └── setup-guide.md
-```
-
-## วิธีใช้ template นี้
-
-### Step 1 — เปลี่ยน placeholder ทั้งหมด
-
-ค้นหาและ replace ค่าเหล่านี้ในไฟล์ทั้งหมดก่อนใช้งาน:
-
-| Placeholder | เปลี่ยนเป็น |
-|---|---|
-| `YOUR_GTM_ACCOUNT_ID` | GTM Account ID ของคุณ (ดูจาก URL ใน GTM) |
-| `YOUR_GTM_WEB_CONTAINER_ID` | Web Container ID เช่น `GTM-XXXXXXX` |
-| `YOUR_GTM_SERVER_CONTAINER_ID` | Server Container ID เช่น `GTM-XXXXXXX` |
-| `YOUR_SERVER_URL` | GCP Cloud Run URL เช่น `https://xxxxx-uc.a.run.app` |
-| `YOUR_GA4_MEASUREMENT_ID` | GA4 Measurement ID เช่น `G-XXXXXXXXXX` |
-| `YOUR_META_PIXEL_ID` | Meta Pixel ID เช่น `1234567890123456` |
-| `YOUR_META_ACCESS_TOKEN` | Meta CAPI Access Token — **ห้าม commit ค่าจริงขึ้น GitHub** |
-
-### Step 2 — Deploy Server Container บน GCP
-
-1. ไปที่ [tagmanager.google.com](https://tagmanager.google.com)
-2. สร้าง container ใหม่ → Target platform: **Server**
-3. เลือก **Automatically provision tagging server**
-4. เลือก GCP project
-5. รอ ~3–5 นาที → ได้ server URL มา
-
-### Step 3 — Import GTM containers
-
-1. GTM → Admin → Import Container
-2. เลือก `gtm-config/web-container.json` → Import เข้า Web Container
-3. เลือก `gtm-config/server-container.json` → Import เข้า Server Container
-
-### Step 4 — ทดสอบ local
-
-1. ติดตั้ง [VS Code](https://code.visualstudio.com) + Live Server extension
-2. เปิด `test-page/gtm-test-page.html` → คลิกขวา → **Open with Live Server**
-3. เปิด GTM Preview Mode ทั้ง Web และ Server container
-4. กดปุ่มใดก็ได้บน test page
-5. ตรวจสอบใน Server Preview: **Meta CAPI - Purchase → Fired** ✅
-6. ตรวจสอบใน Meta Events Manager → Test Events: **Purchase → Processed** ✅
-
-## Concept สำคัญที่ต้องเข้าใจ
-
-### Transport URL คืออะไร
-
-ปกติ GTM Web Container ส่ง event ตรงไปหา Google/Meta — ad blocker รู้จัก vendor domain พวกนั้นแล้วบล็อก
-
-พอ set `transport_url` ให้ชี้มาที่ server ของคุณเอง browser เห็นว่าคุยกับโดเมนของคุณ → ไม่โดนบล็อก
-
-### Deduplication ใน Meta CAPI คืออะไร
-
-ระบบนี้ส่ง event ทั้งจาก browser pixel และ server CAPI — ถ้าไม่ทำ deduplication Meta จะนับ 2 ครั้ง
-
-แก้โดยใส่ `event_id` เดียวกันใน browser pixel และ CAPI event — Meta จะรู้ว่านี่คือ event เดียวกัน นับแค่ครั้งเดียว
-
-### Client vs Tag ใน Server Container
-
-| ส่วนประกอบ | หน้าที่ |
-|---|---|
-| **Client** (GA4 Client) | รับ HTTP request เข้ามา แปลงเป็น event data object กลาง |
-| **Tag** (Meta CAPI Tag) | อ่าน event data แล้ว forward ไปหา Meta ผ่าน server API |
-
-## ไฟล์ในโปรเจค
-
-### `gtm-config/web-container.json`
-มี:
-- **GA4 Configuration Tag** — set `transport_url` ให้ชี้มาที่ server
-- **GA4 Event Purchase Tag** — ส่ง purchase event ไปหา server
-- **Custom Event Purchase Trigger** — fire เมื่อ `dataLayer.push({ event: 'purchase' })`
-
-### `gtm-config/server-container.json`
-มี:
-- **GA4 Client** — รับและ parse request จาก Web Container
-- **Meta CAPI Tag** — forward purchase event ไปหา Meta
-
-### `test-page/gtm-test-page.html`
-ร้านค้าจำลองสำหรับทดสอบ มี:
-- สินค้า 4 รายการ กดปุ่มแล้ว fire event จริง
-- Real-time event log แสดง dataLayer state
-- Events ครบ funnel: `view_item`, `add_to_cart`, `purchase`, `begin_checkout`, `sign_up` และอื่นๆ
-- `event_id` generate อัตโนมัติทุกครั้งที่กด purchase สำหรับ Meta deduplication
-
-### `tracking-spec/tracking-spec-template.xlsx`
-Tracking spec template พร้อมใช้งานจริง มี 5 events:
-- `purchase` (P0) — ครบทุก parameter รวม Meta deduplication fields
-- `add_to_cart` (P0)
-- `view_item` (P1)
-- `begin_checkout` (P1)
-- `sign_up` (P1)
-
-แต่ละ event มี: trigger conditions, dataLayer parameters, code example, และ acceptance criteria สำหรับส่ง developer
-
-## ตัวเลือก Deploy Server Container
-
-GTM Server Container รันเป็น Docker image — deploy ได้ทุกที่ที่รัน Docker ได้:
-
-| Platform | ความยาก | หมายเหตุ |
-|---|---|---|
-| GCP Cloud Run (auto) | ง่ายที่สุด | คลิกเดียวจาก GTM UI |
-| GCP Cloud Run (manual) | ง่าย | ควบคุม config ได้มากขึ้น |
-| AWS App Runner | ปานกลาง | เหมาะถ้า client ใช้ AWS อยู่แล้ว |
-| Docker บน VPS | ปานกลาง | self-hosted เต็มตัว |
-
-ทุก option ใช้ `CONTAINER_CONFIG` environment variable เดียวกันจาก GTM Server Container settings
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Tag Management | Google Tag Manager (Web + Server Container) |
-| Server Infrastructure | GCP Cloud Run |
-| Tracking Destination | Meta Conversions API, GA4 Measurement Protocol |
-| Test Environment | HTML + JavaScript, VS Code Live Server |
+| Tag Management | Google Tag Manager (Web + Server) |
+| Infrastructure | GCP Cloud Run |
+| Destinations | Meta Conversions API, GA4 |
+| Test Environment | HTML + JS, VS Code Live Server |
+
+## Deployment Options
+
+GTM Server Container is a Docker image — runs anywhere via the `CONTAINER_CONFIG` env variable: GCP Cloud Run, AWS App Runner/ECS, Azure Container Apps, or any VPS with Docker.
 
 ## References
-
 - Meta CAPI Tag template by [stape.io](https://stape.io)
-- GTM Server-Side documentation by [Simo Ahava](https://simoahava.com)
+- GTM Server-Side docs by [Simo Ahava](https://simoahava.com)
 
 ---
+---
 
+# GTM Server-Side Tracking + Meta CAPI (ภาษาไทย)
+
+โปรเจคนี้คือการ implement server-side tracking ร่วมกับ Meta Conversions API สร้างเป็น learning portfolio และ template ใช้ซ้ำได้
+
+## Case Study
+
+**ปัญหา**
+Browser-side pixel เสีย conversion event ประมาณ 20–40% (industry benchmark) เพราะ ad blocker, Safari ITP และข้อจำกัด iOS เมื่อ Meta ได้ข้อมูลไม่ครบ มันจะ optimize campaign บนภาพที่ไม่สมบูรณ์ → budget เสียเปล่า attribution ผิด
+
+**วิธีแก้**
+Implement GTM Server-Side + Meta CAPI บน GCP Cloud Run ส่ง event แบบ browser → first-party server → Meta server-to-server พร้อม deduplication ด้วย event_id กันนับซ้ำ
+
+**ผลลัพธ์ (ทดสอบจริงในโปรเจคนี้)**
+- ยืนยัน Purchase event ถึง Meta — แสดงเป็น Processed ใน Meta Events Manager Test Events, source = Server
+- pipeline ทำงานครบ: dataLayer → Web Container → Server Container → Meta CAPI
+- implement deduplication ด้วย event_id ที่ generate ก่อน push dataLayer
+
+**Business Impact ที่คาดหวัง** *(อ้างอิง industry benchmark — ยังไม่ได้วัดจริงในโปรเจคนี้)*
+- server-side tracking โดยทั่วไปกู้คืน event ที่หายไป 20–40%
+- EMQ ที่ดีขึ้นจากการส่ง hashed first-party data ช่วยลด CPA ได้ 15–25% (ตามตัวเลขที่ Meta เผยแพร่)
+- first-party cookie อายุยาวขึ้นจาก ~7 วัน เป็นสูงสุด 400 วัน
+
+## Architecture
+
+```
+Browser ของ User
+    │  dataLayer.push({ event: 'purchase', event_id: '...', ... })
+    ▼
+GTM Web Container
+    │  HTTP POST → transport_url (server ของคุณเอง ไม่ใช่ Google/Meta โดยตรง)
+    ▼
+GTM Server Container (GCP Cloud Run)
+    │
+    ├──► GA4 Client → แปลง request เป็น event data
+    │
+    └──► Meta CAPI Tag → POST graph.facebook.com/events (server-to-server)
+```
+
+## Before / After
+
+| ด้าน | Browser-side (เดิม) | Server-side (ใหม่) |
+|---|---|---|
+| Ad blocker | บล็อก 20–40% | server-to-server ไม่โดนบล็อก |
+| Safari ITP cookie | ~7 วัน | สูงสุด 400 วัน (first-party) |
+| iOS 14+ | ข้อมูลจำกัด | ส่ง hashed user_data ผ่าน server |
+| JavaScript error | pixel อาจไม่ fire | server รับได้ถ้า request ถึง |
+
+*ตัวเลขเป็น industry benchmark ไม่ได้วัดจากโปรเจคนี้โดยตรง*
+
+## ค่าใช้จ่าย (GCP Cloud Run)
+
+| ระดับ traffic | ค่าใช้จ่าย/เดือน |
+|---|---|
+| Dev / test | ~$0 (free tier 2M requests) |
+| เว็บเล็ก (<100k visits) | ~$5 |
+| เว็บกลาง | ~$10–20 |
+
+## Concept สำคัญ
+
+### Transport URL
+ชี้ GTM Web Container ไปที่ server ของคุณแทน Google/Meta โดยตรง browser เห็นเป็น first-party request → ad blocker ไม่บล็อก
+
+### Event Match Quality (EMQ)
+คะแนน 0–10 ที่ Meta ให้ว่าจับคู่ event กับ user จริงได้ดีแค่ไหน EMQ สูง = targeting ดีขึ้น server-side ได้เปรียบเพราะส่ง hashed first-party data จาก backend ได้ **หมายเหตุ:** EMQ เป็น minimum-viable-signal — event coverage (จับ conversion ได้กี่ %) สำคัญกว่าการไล่คะแนนสูง เป้าหมาย EMQ 6+ พร้อม coverage สูง
+
+### Deduplication
+browser pixel กับ server CAPI ส่ง event เดียวกัน ถ้าไม่ทำ dedup Meta นับ 2 ครั้ง แก้โดยใส่ event_id เดียวกันทั้ง 2 ทาง Meta เห็น ID ตรงกัน → นับครั้งเดียว โปรเจคนี้ generate event_id ก่อน push dataLayer
+
+### Consent Mode v2
+server-side ไม่ได้ทำให้ consent ไม่จำเป็น — กลับสำคัญกว่าเดิม เพราะ server ส่งข้อมูลแน่นอน consent ไหลจาก browser → server ผ่าน gcs parameter server forward เฉพาะตอน consent granted บังคับใช้สำหรับ advertiser EEA ตั้งแต่มีนาคม 2024 (production ต้องใช้ Google-certified CMP)
+
+## References
+- Meta CAPI Tag template by [stape.io](https://stape.io)
+- GTM Server-Side docs by [Simo Ahava](https://simoahava.com)
+
+---
 Built by [Khanet-dew (Devver)](https://github.com/Khanet-dew)
